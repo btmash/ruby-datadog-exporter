@@ -1,0 +1,139 @@
+#!/usr/bin/env ruby
+
+require 'datadog_api_client'
+require 'rainbow/refinement'
+require 'dotenv'
+
+Dotenv.load
+
+DatadogAPIClient::V1.configure do |config|
+  config.api_key = ENV['DD_API_KEY']
+  config.application_key = ENV['DD_APP_KEY']
+end
+
+$monitor_api = DatadogAPIClient::V1::MonitorsAPI.new
+$downtimes_api = DatadogAPIClient::V1::DowntimesAPI.new
+
+
+class MonitorPresenter
+  include Comparable
+  using Rainbow
+
+  def self.from_id id
+    new($monitor_api.get_monitor(id)) if id
+  end
+
+  def initialize dog_monitor
+    @doc = dog_monitor
+  end
+
+  def id
+    @doc.id
+  end
+
+  def name
+    @doc.name
+  end
+
+  def tags
+    @doc.tags
+  end
+
+  def url
+    "https://app.datadoghq.com/monitors/#{@doc.id}"
+  end
+
+  def to_s
+    name.red.underline
+  end
+
+  def <=> other
+    self.name <=> other.name
+  end
+
+end
+
+class DowntimePresenter
+  include Comparable
+  using Rainbow
+
+  def initialize dog_downtime
+    @doc = dog_downtime
+  end
+
+  def id
+    @doc.id
+  end
+
+  def url
+    "https://app.datadoghq.com/monitors#/downtime?id=#{@doc.id}"
+  end
+
+  def start_time
+    Time.at @doc.start
+  end
+
+  def infinite?
+    @doc._end.nil?
+  end
+
+  COMMON_DI_TAGS = ['kafka-cluster', 'stream', 'connector', 'type']
+
+  # @note This will start to fail when we have downtimes targeting specific services
+  def owned_by_data_infrastructure?
+    monitor_tags.include?('DI') || 
+      scope.any? { |s| COMMON_DI_TAGS.any? { |tag| s.start_with? tag } } ||
+      monitor&.tags&.include?('DI')
+  end
+
+  def monitor
+    @monitor ||= MonitorPresenter.from_id(@doc.monitor_id)
+  end
+
+  def monitor_tags
+    @doc.monitor_tags
+  end
+
+  # downtime can select a specific monitor, or a group based on tagging
+  def monitor_selector
+    monitor&.to_s || "tags=#{monitor_tags}".yellow
+  end
+
+  def scope
+    @doc.scope
+  end
+
+  def message
+    msg = @doc.message
+    if msg
+      "\n#{msg}\n"
+    end
+  end
+
+
+  def to_s
+    "#{url.cyan} - #{start_time.iso8601.green} - #{monitor_selector} - scope=#{scope} #{message}"
+  end
+
+  def <=> other
+    if self.id == other.id
+      0
+    elsif self.monitor && other.monitor
+      self.monitor <=> other.monitor
+    else
+      if self.monitor
+        -1
+      else
+        1
+      end
+    end
+  end
+
+end
+
+downtimes = $downtimes_api.list_downtimes(current_only: true) # only fetch active downtimes
+                          .map { |downtime| DowntimePresenter.new(downtime) }
+                          .select(&:infinite?)
+                          .select(&:owned_by_data_infrastructure?)
+                          .sort
+                          .each { |downtime| puts downtime }

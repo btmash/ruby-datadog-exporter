@@ -1,0 +1,45 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    datadog_api_client (1.2.0)
+      typhoeus (~> 1.0, >= 1.0.1)
+    diffy (3.4.0)
+    dogapi (1.45.0)
+      multi_json
+    dotenv (2.7.6)
+    ethon (0.14.0)
+      ffi (>= 1.15.0)
+    ffi (1.15.3)
+    multi_json (1.15.0)
+    parallel (1.20.1)
+    pastel (0.8.0)
+      tty-color (~> 0.5)
+    rainbow (3.0.0)
+    tty-color (0.6.0)
+    tty-cursor (0.7.1)
+    tty-prompt (0.23.1)
+      pastel (~> 0.8)
+      tty-reader (~> 0.8)
+    tty-reader (0.9.0)
+      tty-cursor (~> 0.7)
+      tty-screen (~> 0.8)
+      wisper (~> 2.0)
+    tty-screen (0.8.1)
+    typhoeus (1.4.0)
+      ethon (>= 0.9.0)
+    wisper (2.0.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  datadog_api_client (~> 1.2)
+  diffy (~> 3.4)
+  dogapi (~> 1.45)
+  dotenv (~> 2.7)
+  parallel (~> 1.20)
+  rainbow (~> 3.0)
+  tty-prompt (~> 0.23.1)
+
+BUNDLED WITH
+   2.1.4
